@@ -120,6 +120,7 @@ final class CoreMLFrameProcessingEngine: AIFrameProcessingEngine {
         }
         let pts = CMSampleBufferGetPresentationTimeStamp(frame)
 
+        // 锁内只做同步推理与组装（无 await 挂起），串行保护管线时序状态
         lock.lock()
         defer { lock.unlock() }
 
@@ -215,7 +216,7 @@ final class CoreMLFrameProcessingEngine: AIFrameProcessingEngine {
             allocator: kCFAllocatorDefault,
             imageBuffer: pixelBuffer,
             formatDescription: formatDescription,
-            sampleTiming: timing,
+            sampleTiming: &timing,   // 该 C API 需要 UnsafePointer<CMSampleTimingInfo>
             sampleBufferOut: &sampleBuffer
         )
         guard sbStatus == noErr, let sampleBuffer else {
