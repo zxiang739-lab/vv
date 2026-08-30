@@ -1,0 +1,57 @@
+# FrameFlowAI 在线编译（GitHub Actions）
+#
+# 用途：仓库推到 GitHub 后，在 GitHub 托管的 macOS 运行器上用 Xcode 26 直接编译本项目
+# （纯 iOS，iOS 26 部署目标）。无需本地 Mac、无需签名即可完成编译验证，
+# 并在 Actions 页签查看结果 / 下载 .app 产物。
+#
+# 要点：
+# - 必须使用 macos-26 镜像（内置 macOS Tahoe 26 + Xcode 26 系列）；
+#   不要用 macos-latest（目前仍解析到 macos-15 / Xcode 16.4，无法编译 iOS 26 SDK API）。
+# - 通过 xcode-select 显式选中镜像上最新的 Xcode 26。
+# - 编译目标 generic/platform=iOS + CODE_SIGNING_ALLOWED=NO（无需证书 / Team / Apple ID）。
+name: Build iOS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:    # 支持在 Actions 页签手动触发
+
+jobs:
+  build:
+    name: Build FrameFlowAI (iOS, Xcode 26)
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: |
+          XCODE_PATH=$(ls -d /Applications/Xcode_2*.app 2>/dev/null | sort -V | tail -1)
+          echo "Selected Xcode: $XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH"
+          xcodebuild -version
+          echo "--- Available schemes ---"
+          xcodebuild -list -project FrameFlowAI.xcodeproj
+
+      - name: Build for generic iOS device (no code signing)
+        run: |
+          xcodebuild \
+            -project FrameFlowAI.xcodeproj \
+            -scheme FrameFlowAI \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Upload built .app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrameFlowAI-debug.app
+          path: DerivedData/Build/Products/Debug-iphoneos/FrameFlowAI.app
+          if-no-files-found: warn
