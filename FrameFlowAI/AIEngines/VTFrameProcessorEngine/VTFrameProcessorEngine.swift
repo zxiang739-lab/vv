@@ -141,4 +141,15 @@ final class VTFrameProcessorEngine: AIFrameProcessingEngine {
         }
         modelStatus = sessions.first?.reportModelStatus() ?? .ready
     }
+
+    // MARK: - 协议：尾帧刷新（离线补帧）
+
+    /// 刷新引擎内部缓冲的尾帧（VTFrameProcessorSession.flushTail）。
+    func flushEndOfStream() async throws -> [CMSampleBuffer] {
+        var tail: [CMSampleBuffer] = []
+        for session in sessions {
+            tail.append(contentsOf: try session.flushTail())
+        }
+        return tail
+    }
 }
