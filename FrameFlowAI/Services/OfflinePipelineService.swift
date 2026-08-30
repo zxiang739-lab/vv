@@ -207,6 +207,21 @@ final class OfflinePipelineService {
             throw AppError.taskCancelled
         }
 
+        // 6.5 尾帧刷新：补帧等「前向缓冲」引擎可能缓冲了最后一帧，全部输入处理完后刷新一次
+        let tail = try await engine.flushEndOfStream()
+        for output in tail {
+            guard let pixelBuffer = CMSampleBufferGetImageBuffer(output) else { continue }
+            let pts = CMTime(value: outputFrameIndex, timescale: timescale)
+            while !writerInput.isReadyForMoreMediaData {
+                if Task.isCancelled { throw AppError.taskCancelled }
+                try await Task.sleep(nanoseconds: 1_000_000)
+            }
+            guard adaptor.append(pixelBuffer, withPresentationTime: pts) else {
+                throw AppError.assetWriterFailed(underlying: writer.error ?? NSError(domain: "OfflinePipeline", code: -6, userInfo: [NSLocalizedDescriptionKey: "写入像素缓冲失败。"]))
+            }
+            outputFrameIndex += 1
+        }
+
         // 7. 写入音频
         if let audioWriterInput, !audioSamples.isEmpty {
             for sample in audioSamples {
