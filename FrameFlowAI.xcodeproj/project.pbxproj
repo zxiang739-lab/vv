@@ -6,22 +6,9 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		0A00000000000000000000AA /* Exceptions for "FrameFlowAI" folder in "FrameFlowAI" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				App/Info.plist,
-			);
-			target = 0A00000000000000000000A6 /* FrameFlowAI */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0A00000000000000000000A3 /* FrameFlowAI */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				0A00000000000000000000AA /* Exceptions for "FrameFlowAI" folder in "FrameFlowAI" target */,
-			);
 			explicitFileTypes = {
 			};
 			explicitFolders = (
@@ -269,7 +256,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "FrameFlowAI/App/Info.plist";
+				INFOPLIST_FILE = "Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -298,7 +285,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = "FrameFlowAI/App/Info.plist";
+				INFOPLIST_FILE = "Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
