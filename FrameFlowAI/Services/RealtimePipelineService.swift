@@ -94,23 +94,29 @@ final class RealtimePipelineService {
 
         let arrivalTime = CACurrentMediaTime()
 
+        // 先跳到专用处理队列（离开摄像头回调队列）；DispatchQueue.async 的闭包必须是
+        // 同步闭包、不能直接 await，因此内部再用 Task 承载 async 引擎调用。
+        // 帧间不重叠由上方 isFrameInFlight 背压标志保证：同一时刻仅一帧在处理。
         processingQueue.async { [weak self] in
             guard let self else { return }
-            defer {
-                self.stateLock.lock()
-                self.isFrameInFlight = false
-                self.stateLock.unlock()
-            }
-            do {
-                let outputs = try await self.engine?.process(frame: sampleBuffer) ?? []
-                for output in outputs {
-                    self.performanceMonitor.recordOutput()
-                    self.enqueueToPreview(output)
+            Task { [weak self] in
+                guard let self else { return }
+                defer {
+                    self.stateLock.lock()
+                    self.isFrameInFlight = false
+                    self.stateLock.unlock()
                 }
-                self.performanceMonitor.recordLatency(CACurrentMediaTime() - arrivalTime)
-            } catch {
-                AppLogger.engineError("实时帧处理失败：\(error.localizedDescription)")
-                self.onError?(error)
+                do {
+                    let outputs = try await self.engine?.process(frame: sampleBuffer) ?? []
+                    for output in outputs {
+                        self.performanceMonitor.recordOutput()
+                        self.enqueueToPreview(output)
+                    }
+                    self.performanceMonitor.recordLatency(CACurrentMediaTime() - arrivalTime)
+                } catch {
+                    AppLogger.engineError("实时帧处理失败：\(error.localizedDescription)")
+                    self.onError?(error)
+                }
             }
         }
     }
