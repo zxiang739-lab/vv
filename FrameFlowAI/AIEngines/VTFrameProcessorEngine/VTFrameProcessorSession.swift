@@ -20,19 +20,12 @@ import Dispatch
 @available(iOS 26.0, *)
 final class VTFrameProcessorSession {
 
-    // MARK: - 效果类型
-
-    enum Effect {
-        case lowLatencyInterpolation(numberOfInterpolatedFrames: Int)
-        case lowLatencySuperResolution(scaleFactor: Float)
-        case highQualitySuperResolution(scaleFactor: Int)
-        case highQualityFrameRateConversion(sourceFrameRate: Double, conversionFrameRate: Double)
-    }
-
     // MARK: - 属性
 
+    // 效果类型统一复用 VTFrameProcessorConfigFactory.Effect，
+    // 避免在 Session / Factory 各定义一份同名枚举导致类型不一致。
     private let processor = VTFrameProcessor()
-    private let effect: Effect
+    private let effect: VTFrameProcessorConfigFactory.Effect
     private let sourceSize: CGSize
 
     /// 当前会话配置（构建后缓存）
@@ -54,7 +47,7 @@ final class VTFrameProcessorSession {
 
     // MARK: - 初始化
 
-    init(effect: Effect, sourceSize: CGSize) {
+    init(effect: VTFrameProcessorConfigFactory.Effect, sourceSize: CGSize) {
         self.effect = effect
         self.sourceSize = sourceSize
     }
@@ -473,7 +466,7 @@ final class VTFrameProcessorSession {
             allocator: kCFAllocatorDefault,
             imageBuffer: pixelBuffer,
             formatDescription: formatDescription,
-            sampleTiming: timing,
+            sampleTiming: &timing,   // 该 C API 需要 UnsafePointer<CMSampleTimingInfo>
             sampleBufferOut: &sampleBuffer
         )
         guard sbStatus == noErr, let sampleBuffer else {
@@ -496,9 +489,13 @@ final class VTFrameProcessorSession {
         case .lowLatencyInterpolation, .highQualityFrameRateConversion:
             return sourceSize
         case .lowLatencySuperResolution(let f):
-            return CGSize(width: Int(Double(sourceSize.width) * Double(f)), height: Int(Double(sourceSize.height) * Double(f)))
+            // f 为 Float，统一转 CGFloat 后与源尺寸（CGFloat）相乘
+            return CGSize(width: sourceSize.width * CGFloat(f),
+                          height: sourceSize.height * CGFloat(f))
         case .highQualitySuperResolution(let s):
-            return CGSize(width: sourceSize.width * s, height: sourceSize.height * s)
+            // s 为 Int，需显式转 CGFloat（Swift 不允许 CGFloat × Int）
+            return CGSize(width: sourceSize.width * CGFloat(s),
+                          height: sourceSize.height * CGFloat(s))
         }
     }
 
