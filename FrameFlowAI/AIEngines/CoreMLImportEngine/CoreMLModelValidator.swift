@@ -107,7 +107,8 @@ enum CoreMLModelValidator {
             switch outputFeature.type {
             case .image:
                 outputImage = true
-                outputPixelFormat = outputFeature.imageConstraint?.pixelFormatType
+                // MLImageConstraint.pixelFormatTypes 为 Set<NSNumber>，取首个受支持格式
+                outputPixelFormat = outputFeature.imageConstraint?.pixelFormatTypes.first?.uint32Value
             case .multiArray:
                 outputShape = outputFeature.multiArrayConstraint?.shape.map { $0.intValue }
             default:
@@ -118,7 +119,8 @@ enum CoreMLModelValidator {
         // 输入像素格式（图像输入）
         var inputPixelFormat: OSType?
         if let imageInputName, let constraint = description.inputDescriptionsByName[imageInputName]?.imageConstraint {
-            inputPixelFormat = constraint.pixelFormatType
+            // MLImageConstraint.pixelFormatTypes 为 Set<NSNumber>，取首个受支持格式
+            inputPixelFormat = constraint.pixelFormatTypes.first?.uint32Value
         }
 
         // 文件大小
