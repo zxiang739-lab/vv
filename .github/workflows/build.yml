@@ -9,6 +9,8 @@
 #   不要用 macos-latest（目前仍解析到 macos-15 / Xcode 16.4，无法编译 iOS 26 SDK API）。
 # - 通过 xcode-select 显式选中镜像上最新的 Xcode 26。
 # - 编译目标 generic/platform=iOS + CODE_SIGNING_ALLOWED=NO（无需证书 / Team / Apple ID）。
+# - 官方 action 使用 Node 24 原生版本（checkout@v5、upload-artifact@v6），
+#   避免 GitHub Actions 对 Node.js 20 的弃用告警（2025-09-19 起弃用）。
 name: Build iOS
 
 on:
@@ -26,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5   # Node 24 原生（v4 为 Node 20，已被弃用）
 
       - name: Select Xcode 26
         run: |
@@ -50,7 +52,7 @@ jobs:
             build
 
       - name: Upload built .app artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6   # Node 24 原生（v5 默认仍跑 Node 20，注意规避）
         with:
           name: FrameFlowAI-debug.app
           path: DerivedData/Build/Products/Debug-iphoneos/FrameFlowAI.app
