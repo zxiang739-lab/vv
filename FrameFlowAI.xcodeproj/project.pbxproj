@@ -6,9 +6,22 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		0A00000000000000000000AA /* Exceptions for "FrameFlowAI" folder in "FrameFlowAI" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				App/Info.plist,
+			);
+			target = 0A00000000000000000000A6 /* FrameFlowAI */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0A00000000000000000000A3 /* FrameFlowAI */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0A00000000000000000000AA /* Exceptions for "FrameFlowAI" folder in "FrameFlowAI" target */,
+			);
 			explicitFileTypes = {
 			};
 			explicitFolders = (
