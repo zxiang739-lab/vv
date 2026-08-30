@@ -52,4 +52,17 @@ protocol AIFrameProcessingEngine: AnyObject {
 
     /// 触发系统模型下载（仅 VT 高质量离线配置需要；CoreML 引擎为空实现）。
     func downloadConfigurationModelIfNeeded() async throws
+
+    /// 所有输入帧处理完后调用：刷新引擎内部缓冲的尾帧（离线补帧等「前向缓冲」模式需要）。
+    /// 无尾帧语义的引擎返回空数组即可。
+    func flushEndOfStream() async throws -> [CMSampleBuffer]
+}
+
+// MARK: - 默认实现
+
+extension AIFrameProcessingEngine {
+    /// 默认无尾帧缓冲：返回空数组（CoreML 引擎无需改动）。
+    func flushEndOfStream() async throws -> [CMSampleBuffer] {
+        []
+    }
 }
