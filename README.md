@@ -173,8 +173,7 @@ FrameFlowAI/
 ├── FrameFlowAI.xcodeproj/          # Xcode 工程（objectVersion 77，同步组自动纳源）
 ├── FrameFlowAI/
 │   ├── App/
-│   │   ├── FrameFlowAIApp.swift    # @main 入口 + Liquid Glass 衬底渐变
-│   │   └── Info.plist              # 隐私权限键（相机/相册读/相册写）
+│   │   └── FrameFlowAIApp.swift    # @main 入口 + Liquid Glass 衬底渐变
 │   ├── Assets.xcassets/            # 资源（AccentColor / AppIcon）
 │   ├── Models/                     # 纯数据模型
 │   │   ├── EngineKind.swift        # 双引擎枚举
@@ -218,6 +217,7 @@ FrameFlowAI/
 │   │   ├── Player/                 # 自定义 AVPlayer 播放器
 │   │   └── Settings/               # 设置 / 模型导入
 │   └── Utilities/                  # 错误 / 日志 / 系统指标
+├── Info.plist                      # 隐私权限键（相机/相册读/相册写）；位于工程根目录、同步文件夹之外，不会被当作资源拷贝
 ├── docs/                           # 架构框图 / 数据流 / 性能说明
 ├── .github/workflows/build.yml     # GitHub Actions 在线编译
 ├── README.md
@@ -317,7 +317,7 @@ GitHub 托管的 **`macos-26`** 运行器上用 **Xcode 26** 直接编译本项�
 
 ## 10. 隐私与合规
 
-- 相机 / 相册 / 文件权限声明见 `FrameFlowAI/App/Info.plist`：
+- 相机 / 相册 / 文件权限声明见工程根目录 `Info.plist`：
   - `NSCameraUsageDescription`（实时模式采集）
   - `NSPhotoLibraryUsageDescription`（从相册选择视频）
   - `NSPhotoLibraryAddUsageDescription`（保存输出）
