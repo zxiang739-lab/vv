@@ -278,10 +278,15 @@ final class VTFrameProcessorSession {
         return [try makeSampleBuffer(pixelBuffer: destFrame.buffer, pts: pts)]
     }
 
-    /// 高质量帧率转换（离线补帧）：每源帧生成 (倍率-1) 个插值帧 + 当前帧。
-    /// 注：VTFrameRateConversionConfiguration 的公开文档在编写时不可访问，
-    /// 此处按 WWDC25 示例的「插值帧在 destinationFrames，当前帧由调用方输出」模式实现；
-    /// 离线管线最终按输出帧索引统一重排时间戳，因此即便细节有出入也不影响成片帧率正确性。
+    /// 高质量帧率转换（离线补帧）：在相邻两帧 A(source) 与 B(next) 之间生成插值帧。
+    ///
+    /// API 语义（iOS 26 SDK）：
+    /// `VTFrameRateConversionParameters(sourceFrame:nextFrame:opticalFlow:interpolationPhase:submissionMode:destinationFrames:)`
+    /// 的 `sourceFrame` / `nextFrame` 分别为「当前源帧」与「按时间序的下一源帧」，
+    /// 插值帧插入两者之间。因此本实现采用「前向缓冲」：
+    /// - 帧 A 到达时先缓冲（作为 sourceFrame），不产生输出；
+    /// - 帧 B 到达时对 (A, B) 提交一次处理，输出 [A, A..B 之间的插值帧…]；
+    /// - 全部输入处理完后由 `flushTail()` 输出最后一帧，保证源帧完整不丢失。
     private func processFrameRateConversion(pixelBuffer: CVPixelBuffer, pts: CMTime, sourceFPS: Double, conversionFPS: Double) throws -> [CMSampleBuffer] {
         guard let current = VTFrameProcessorFrame(buffer: pixelBuffer, presentationTimeStamp: pts) else {
             throw AppError.parameterCreationFailed
@@ -292,10 +297,23 @@ final class VTFrameProcessorSession {
         let multiplier = max(1, Int((conversionFPS / sourceFPS).rounded()))
         let interpolatedCount = max(1, multiplier - 1)
 
+        // 首帧：仅缓冲（作为下一处理对的 sourceFrame），不产生输出
+        guard let previous = previousFrame else {
+            previousFrame = current
+            return []
+        }
+
+        // 在 previous(A) 与 current(B) 之间插值：sourceFrame = A, nextFrame = B
         let destinationFrames = try makeDestinationFrames(count: interpolatedCount, pts: pts)
+        // 插值相位：均匀分布在 (0,1) 区间（0 对应 A，1 对应 B）
+        let phases: [Float] = (1...interpolatedCount).map { Float($0) / Float(interpolatedCount + 1) }
 
         guard let params = VTFrameRateConversionParameters(
-            sourceFrame: current,
+            sourceFrame: previous,
+            nextFrame: current,
+            opticalFlow: nil,
+            interpolationPhase: phases,
+            submissionMode: .sequential,   // 逐帧顺序提交（A→B→C…），保持时序缓存
             destinationFrames: destinationFrames
         ) else {
             throw AppError.parameterCreationFailed
@@ -303,28 +321,35 @@ final class VTFrameProcessorSession {
 
         try runProcessing(params)
 
-        // 组装输出：插值帧 + 当前帧
-        var outputs: [CMSampleBuffer] = []
-        if let previous = previousFrame {
-            let dt = CMTimeSubtract(pts, previous.presentationTimeStamp)
-            for i in 0..<interpolatedCount {
-                let phase = Double(i + 1) / Double(interpolatedCount + 1)
-                let interpolatedPTS = CMTimeAdd(
-                    previous.presentationTimeStamp,
-                    CMTimeMultiplyByFloat64(dt, multiplier: phase)
-                )
-                outputs.append(try makeSampleBuffer(pixelBuffer: destinationFrames[i].buffer, pts: interpolatedPTS))
-            }
-        } else {
-            // 首帧：没有上一帧时只输出当前帧
-            for frame in destinationFrames {
-                outputs.append(try makeSampleBuffer(pixelBuffer: frame.buffer, pts: pts))
-            }
+        // 输出顺序：[源帧 A] + A..B 之间的插值帧（时间戳按相位内插）
+        let dt = CMTimeSubtract(pts, previous.presentationTimeStamp)
+        var outputs: [CMSampleBuffer] = [
+            try makeSampleBuffer(pixelBuffer: previous.buffer, pts: previous.presentationTimeStamp)
+        ]
+        for (index, frame) in destinationFrames.enumerated() {
+            let phase = Double(phases[index])
+            let interpolatedPTS = CMTimeAdd(
+                previous.presentationTimeStamp,
+                CMTimeMultiplyByFloat64(dt, multiplier: phase)
+            )
+            outputs.append(try makeSampleBuffer(pixelBuffer: frame.buffer, pts: interpolatedPTS))
         }
-        outputs.append(try makeSampleBuffer(pixelBuffer: pixelBuffer, pts: pts))
 
         previousFrame = current
         return outputs
+    }
+
+    /// 所有输入帧处理完后调用：输出被缓冲的最后一帧（仅离线帧率转换需要）。
+    /// 其它效果（超分等）不缓冲待输出帧，返回空数组。
+    func flushTail() throws -> [CMSampleBuffer] {
+        switch effect {
+        case .highQualityFrameRateConversion:
+            guard let last = previousFrame else { return [] }
+            previousFrame = nil
+            return [try makeSampleBuffer(pixelBuffer: last.buffer, pts: last.presentationTimeStamp)]
+        default:
+            return []
+        }
     }
 
     // MARK: - 私有工具
