@@ -64,10 +64,9 @@ enum VTFrameProcessorConfigFactory {
 
     /// 创建具体配置对象（并校验可用性）。
     ///
-    /// 注意：`VTFrameRateConversionConfiguration` 的公开文档页在编写本工程时无法访问，
-    /// 属性名 `sourceFrameRate` / `conversionFrameRate` 依据 WWDC25 Session 300
-    /// 「Enhance your app with machine learning-based video effects」示例代码编写；
-    /// 若安装的 SDK 中属性名有出入，只需修改下方 frameRateConversion 分支一处即可。
+    /// 全部 API 签名已按 iOS 26 SDK 官方文档核验：
+    /// - 低延迟插值 / 低延迟超分 / 帧率转换 / 高质量超分的初始化器与枚举 case 均与 SDK 一致；
+    /// - `VTSuperResolutionScalerConfiguration` 是唯一带「系统模型下载」机制的高质量离线配置。
     static func makeConfiguration(for effect: Effect, sourceSize: CGSize) throws -> any VTFrameProcessorConfiguration {
         let w = Int(sourceSize.width)
         let h = Int(sourceSize.height)
@@ -105,10 +104,17 @@ enum VTFrameProcessorConfigFactory {
             }
             return config
 
-        case .highQualityFrameRateConversion(let src, let conv):
-            let config = VTFrameRateConversionConfiguration()
-            config.sourceFrameRate = src
-            config.conversionFrameRate = conv
+        case .highQualityFrameRateConversion:
+            // iOS 26 SDK：init?(frameWidth:frameHeight:usePrecomputedFlow:qualityPrioritization:revision:)
+            guard let config = VTFrameRateConversionConfiguration(
+                frameWidth: w,
+                frameHeight: h,
+                usePrecomputedFlow: false,   // 不提供预计算光流，由系统内部计算
+                qualityPrioritization: .normal,
+                revision: .revision1         // Revision.revision1（首个公开修订版本）
+            ) else {
+                throw AppError.engineUnsupported(reason: "无法创建高质量帧率转换配置（分辨率不受支持）。")
+            }
             return config
         }
     }
@@ -123,9 +129,8 @@ enum VTFrameProcessorConfigFactory {
         case .highQualitySuperResolution:
             return VTSuperResolutionScalerConfiguration.isSupported
         case .highQualityFrameRateConversion:
-            // VTFrameRateConversionConfiguration 未公开单独的 isSupported 时按可用处理；
-            // 运行时仍可能因配置不合法而 throw，会在 start 阶段以 AppError 上报。
-            return true
+            // iOS 26 SDK：class var isSupported: Bool
+            return VTFrameRateConversionConfiguration.isSupported
         }
     }
 
@@ -133,7 +138,10 @@ enum VTFrameProcessorConfigFactory {
     /// 离线高质量配置（超分）可能需要在系统层面按需下载权重。
     static func requiresConfigurationModelDownload(effect: Effect) -> Bool {
         switch effect {
-        case .highQualitySuperResolution, .highQualityFrameRateConversion:
+        // 仅离线高质量超分在系统层面有「按需下载 AI 权重」机制
+        // （configurationModelStatus / downloadConfigurationModel）；
+        // 帧率转换与全部低延迟配置的系统权重均随系统预置，无需下载。
+        case .highQualitySuperResolution:
             return true
         default:
             return false
