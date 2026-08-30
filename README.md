@@ -67,6 +67,8 @@ FrameFlowAI 是一个纯 Swift / SwiftUI 的 iOS App，做两件事：
 
 > 离线链路细节：AVAssetReader 读帧 → AI 引擎处理 → AVAssetWriter（H.264）编码输出；
 > 异步任务队列、可取消、分批分帧防 OOM、输出帧按目标帧率统一重排时间戳、可选复制音频、完成后可保存相册。
+> 离线补帧采用「前向缓冲」：在源帧 A 与下一源帧 B 之间插值（`VTFrameRateConversionParameters(sourceFrame:nextFrame:...)`），
+> 处理完所有输入后通过 `flushEndOfStream()` 刷新最后一帧，保证源帧完整不丢失。
 
 ---
 
@@ -88,7 +90,8 @@ FrameFlowAI 是一个纯 Swift / SwiftUI 的 iOS App，做两件事：
                    ▼
 ┌─────────────────────────────────────────────────────────┐
 │  protocol AIFrameProcessingEngine（统一抽象协议）            │
-│  prepare / start / stop / process / downloadModel        │
+│  prepare / start / stop / process / downloadModel /      │
+│  flushEndOfStream（离线补帧尾帧刷新，默认空实现）            │
 └───────────┬─────────────────────────┬───────────────────┘
             ▼                         ▼
 ┌──────────────────┐   ┌──────────────────────────────┐
@@ -114,12 +117,14 @@ FrameFlowAI 是一个纯 Swift / SwiftUI 的 iOS App，做两件事：
 - **硬件**：`VTFrameProcessor` 使用 Apple 神经引擎 / GPU 内置权重，需设备支持对应能力。运行时通过
   `VTLowLatencyFrameInterpolationConfiguration.isSupported`、
   `VTLowLatencySuperResolutionScalerConfiguration.isSupported`、
-  `VTSuperResolutionScalerConfiguration.isSupported` 等**运行时能力检测**判断；
+  `VTSuperResolutionScalerConfiguration.isSupported`、
+  `VTFrameRateConversionConfiguration.isSupported` 等**运行时能力检测**判断；
   不支持时 App 会禁用对应模式按钮并提示原因。
 - **系统模型下载**：离线高质量 `VTSuperResolutionScalerConfiguration` 可能需要在系统层面按需下载 AI 权重。
   App 在 `startSession` 前检查 `configurationModelStatus`（`downloadRequired` / `downloading` / `ready`），
   通过 `downloadConfigurationModel(completionHandler:)` 驱动下载，并用
   `configurationModelPercentageAvailable` 展示进度（见 `VTFrameProcessorSession.ensureModelAvailable`）。
+  > 帧率转换（`VTFrameRateConversionConfiguration`）与全部低延迟配置的系统权重随系统预置，**无**模型下载机制。
 - **实时低延迟配置**（`VTLowLatencyXXX`）的系统权重随系统预置，无需额外下载。
 - 建议真机运行；模拟器上 `isSupported` 通常为 `false`，属于预期行为。
 
@@ -181,7 +186,7 @@ FrameFlowAI/
 │   │   ├── OfflineJob.swift        # 离线任务状态机
 │   │   └── CoreMLModelInfo.swift
 │   ├── AIEngines/                  # 双 AI 引擎（分层核心）
-│   │   ├── AIFrameProcessingEngine.swift   # 统一抽象协议
+│   │   ├── AIFrameProcessingEngine.swift   # 统一抽象协议（含 flushEndOfStream 默认实现）
 │   │   ├── EngineFactory.swift             # 引擎工厂
 │   │   ├── VTFrameProcessorEngine/         # 系统引擎（iOS26+）
 │   │   │   ├── VTFrameProcessorConfigFactory.swift
@@ -196,7 +201,7 @@ FrameFlowAI/
 │   ├── Services/                   # 媒体服务层
 │   │   ├── CameraService.swift     # AVCaptureSession
 │   │   ├── RealtimePipelineService.swift
-│   │   ├── OfflinePipelineService.swift    # AVAssetReader/Writer
+│   │   ├── OfflinePipelineService.swift    # AVAssetReader/Writer（含尾帧刷新）
 │   │   ├── PerformanceMonitor.swift
 │   │   ├── PhotoLibraryService.swift
 │   │   └── VideoImportService.swift
@@ -233,11 +238,13 @@ FrameFlowAI/
 5. **运行**：选一台 **iOS 26+ 真机**（系统 VT 引擎需要真机神经引擎；CoreML 引擎模拟器可编译但推理受限）。
 6. **无第三方依赖**：无需 `pod install` / SPM，工程零外部依赖，直接 ⌘R 即可。
 
-> 若你的 SDK 中 `VTFrameRateConversionConfiguration` 的属性名与本工程假设
-> （`sourceFrameRate` / `conversionFrameRate`）不同，只需修改
-> `AIEngines/VTFrameProcessorEngine/VTFrameProcessorConfigFactory.swift` 的
-> `makeConfiguration` 中 `highQualityFrameRateConversion` 分支一处。
-> （该配置类的公开文档页在编写时不可访问，属性名依据 WWDC25 Session 300 示例编写。）
+> 全部 VideoToolbox API 均已按 **iOS 26 SDK 官方文档核验并适配**：
+> `VTLowLatencyFrameInterpolationConfiguration.init?(frameWidth:frameHeight:numberOfInterpolatedFrames:)`、
+> `VTLowLatencySuperResolutionScalerConfiguration.init(frameWidth:frameHeight:scaleFactor:)`、
+> `VTSuperResolutionScalerConfiguration.init?(frameWidth:frameHeight:scaleFactor:inputType:usePrecomputedFlow:qualityPrioritization:revision:)`、
+> `VTFrameRateConversionConfiguration.init?(frameWidth:frameHeight:usePrecomputedFlow:qualityPrioritization:revision:)`、
+> `VTFrameRateConversionParameters.init?(sourceFrame:nextFrame:opticalFlow:interpolationPhase:submissionMode:destinationFrames:)` 等。
+> 统一封装在 `AIEngines/VTFrameProcessorEngine/` 下，上层业务代码不感知。
 
 ### 7.2 直接用 GitHub 在线编译（无需本地 Mac）
 
@@ -256,6 +263,7 @@ GitHub 托管的 **`macos-26`** 运行器上用 **Xcode 26** 直接编译本项�
 - **注意事项**：
   - 必须用 `macos-26` 镜像（内置 Xcode 26）；`macos-latest` 目前解析到 macos-15 / Xcode 16.4，
     无法编译 iOS 26 SDK API；
+  - 官方 action 使用 Node 24 原生版本（`checkout@v5`、`upload-artifact@v6`），无 Node 20 弃用告警；
   - 编译**无需签名**（`CODE_SIGNING_ALLOWED=NO`），产物为未签名的 Debug .app，仅用于编译验证，
     不可直接装真机；若要装真机 / 上架，仍需在本地或 CI 配置证书签名；
   - 免费分钟数：**公开仓库**的 macOS 运行器免费；**私有仓库**需付费计划（macOS 分钟数计费）。
