@@ -88,8 +88,9 @@ final class CoreMLInferenceStage {
             self.inputHeight = Int(size.height)
         } else if isImageInput, let name = inputNames.first,
                   let constraint = description.inputDescriptionsByName[name]?.imageConstraint {
-            self.inputWidth = constraint.width > 0 ? constraint.width : nil
-            self.inputHeight = constraint.height > 0 ? constraint.height : nil
+            // MLImageConstraint 通过 pixelsWide / pixelsHigh（Int）暴露固定输入尺寸
+            self.inputWidth = constraint.pixelsWide > 0 ? constraint.pixelsWide : nil
+            self.inputHeight = constraint.pixelsHigh > 0 ? constraint.pixelsHigh : nil
         } else {
             self.inputWidth = nil
             self.inputHeight = nil
@@ -164,6 +165,7 @@ final class CoreMLInferenceStage {
                                          size: CGSize(width: CVPixelBufferGetWidth(pixelBuffer),
                                                       height: CVPixelBufferGetHeight(pixelBuffer)))
             }
+            // MLFeatureValue(pixelBuffer:) 为「可失败」构造器（像素格式不受支持时返回 nil），保留 guard
             guard let value = MLFeatureValue(pixelBuffer: buffer) else {
                 throw AppError.parameterCreationFailed
             }
@@ -176,10 +178,8 @@ final class CoreMLInferenceStage {
             let array = try CoreMLPixelBufferUtility.makeRGBInputMultiArray(
                 from: bgra, width: width, height: height, preferredLayout: inputLayout
             )
-            guard let value = MLFeatureValue(multiArray: array) else {
-                throw AppError.parameterCreationFailed
-            }
-            return value
+            // MLFeatureValue(multiArray:) 为「非可失败」构造器，直接构造返回
+            return MLFeatureValue(multiArray: array)
         }
     }
 
