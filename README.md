@@ -23,6 +23,7 @@ UI 全部使用 **SwiftUI 原生 Liquid Glass**（`.glassBackgroundEffect()`）�
 8. [使用教程](#8-使用教程)
 9. [已知性能限制](#9-已知性能限制)
 10. [隐私与合规](#10-隐私与合规)
+11. [GitHub Actions 在线编译（无需本地 Mac）](#11-github-actions-在线编译无需本地-mac)
 
 ---
 
@@ -213,6 +214,7 @@ FrameFlowAI/
 │   │   └── Settings/               # 设置 / 模型导入
 │   └── Utilities/                  # 错误 / 日志 / 系统指标
 ├── docs/                           # 架构框图 / 数据流 / 性能说明
+├── .github/workflows/build.yml     # GitHub Actions 在线编译
 ├── README.md
 └── .gitignore
 ```
@@ -220,6 +222,8 @@ FrameFlowAI/
 ---
 
 ## 7. 编译步骤
+
+### 7.1 本地编译（需要 Mac）
 
 1. **环境**：macOS 26（Xcode 26 / 27）+ Xcode 最新版（需含 iOS 26 SDK）。
 2. **打开工程**：双击 `FrameFlowAI.xcodeproj`（或 `open FrameFlowAI.xcodeproj`）。
@@ -234,6 +238,28 @@ FrameFlowAI/
 > `AIEngines/VTFrameProcessorEngine/VTFrameProcessorConfigFactory.swift` 的
 > `makeConfiguration` 中 `highQualityFrameRateConversion` 分支一处。
 > （该配置类的公开文档页在编写时不可访问，属性名依据 WWDC25 Session 300 示例编写。）
+
+### 7.2 直接用 GitHub 在线编译（无需本地 Mac）
+
+仓库已内置 CI（`.github/workflows/build.yml`）：每次 push 到 `main`（或手动触发）都会在
+GitHub 托管的 **`macos-26`** 运行器上用 **Xcode 26** 直接编译本项目。
+
+- **编译命令**（与 CI 相同，Mac 上亦可本地执行）：
+  ```
+  xcodebuild -project FrameFlowAI.xcodeproj -scheme FrameFlowAI \
+    -configuration Debug -destination 'generic/platform=iOS' \
+    -derivedDataPath DerivedData \
+    CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+  ```
+- **查看结果**：仓库 → **Actions** 页签 → 「Build iOS」工作流；绿色通过 / 红色失败，点进 job 看日志。
+- **下载产物**：运行成功后 job 底部可下载 `FrameFlowAI-debug.app`。
+- **注意事项**：
+  - 必须用 `macos-26` 镜像（内置 Xcode 26）；`macos-latest` 目前解析到 macos-15 / Xcode 16.4，
+    无法编译 iOS 26 SDK API；
+  - 编译**无需签名**（`CODE_SIGNING_ALLOWED=NO`），产物为未签名的 Debug .app，仅用于编译验证，
+    不可直接装真机；若要装真机 / 上架，仍需在本地或 CI 配置证书签名；
+  - 免费分钟数：**公开仓库**的 macOS 运行器免费；**私有仓库**需付费计划（macOS 分钟数计费）。
+  - 若某次编译失败，日志中第一个 `error:` 即为需修正的 API / 语法问题。
 
 ---
 
