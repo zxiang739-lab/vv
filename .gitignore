@@ -1,0 +1,51 @@
+# Xcode / macOS
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.xcconfig
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/
+
+# 个人 / 本地配置
+*.swp
+*~
+.DS_Store
+.idea/
+.vscode/
+
+# 日志
+*.log
+
+# 用户导入的模型 / 视频等运行时产物（不提交 GitHub）
+ImportedModels/
+ImportedVideos/
+*.mlpackage
+*.mlmodel
+*.mlmodelc
+
+# 测试与覆盖率
+DerivedData/
+*.xctest
+xcresult/

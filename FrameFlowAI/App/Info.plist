@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>zh_CN</string>
+	<key>CFBundleDisplayName</key>
+	<string>流光帧率</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+		<string>metal</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
+	<!-- ===== 隐私权限键（遵循 iOS 隐私规范）===== -->
+	<!-- 1. 摄像头：实时模式（实时补帧 / 实时超分 / 实时补帧+超分）需要 -->
+	<key>NSCameraUsageDescription</key>
+	<string>实时补帧与实时超分模式需要使用摄像头实时采集画面，处理后仅在本机内存中进行预览，不会被上传。</string>
+
+	<!-- 2. 相册读权限：离线模式需要从相册导入本地视频作为处理源 -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>离线模式需要访问相册以选择要处理的视频文件。</string>
+
+	<!-- 3. 相册写权限（仅添加）：离线处理完成后的新视频会保存到相册 -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>离线处理完成后的增强视频需要保存到您的相册。</string>
+
+	<!-- 4. 文件导入由系统文件选择器（UIDocumentPicker / fileImporter）驱动，
+	     属用户主动操作，无需额外的隐私键。 -->
+</dict>
+</plist>
